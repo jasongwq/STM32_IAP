@@ -11,7 +11,6 @@
 //技术支持：www.openedv.com
 //广州市星翼电子科技有限公司
 #define BLOCK (2048)
-u16 NVIC_VectTab_ram[0x100 / 2] __attribute__ ((at(0X20000200))); //接收缓冲,最大USART_REC_LEN个字节,起始地址为0X20001000.
 
 int main(void)
 {
@@ -21,13 +20,10 @@ int main(void)
     uart_init(115200);  //串口初始化为115200
     delay_init();       //延时初始化
     printf("bootloader\r\n");
-    delay_ms(10);
     if (USART_RX_CNT > 1)
     {
         Data_Save(1);
     }
-//    STMFLASH_Read(NVIC_VectTab_FLASH, NVIC_VectTab_ram, 0x100 / 2);
-//    MY_NVIC_SetVectorTable(NVIC_VectTab_RAM, 0x200);
     while (1)
     {
         int r = Data_Read();
@@ -37,16 +33,14 @@ int main(void)
             if (erase)
             {
                 STMFLASH_Erase(FLASH_APP1_ADDR);
-                delay_ms(1000);
+                delay_ms(30);
                 erase = 0;
             }
-
             static int part1ok = 0;
             if (USART_RX_CNT)
             {
                 extern volatile u8 *pUSART_RX_BUF;
                 extern volatile u8 *plastUSART_RX_BUF;
-
                 if (oldcount == USART_RX_CNT) //新周期内,没有收到任何数据,认为本次数据接收完成.
                 {
                     applenth = USART_RX_CNT;
@@ -68,7 +62,7 @@ int main(void)
                             }
                             else
                             {
-                                printf("Illegal FLASH APP1!\r\n");
+                                printf("Illegal Receive APP1!\r\n");
                             }
                         }
                         else if (applenth > BLOCK && part1ok)
@@ -83,7 +77,7 @@ int main(void)
                     }
                     else
                     {
-                        printf("No APP!\r\n");
+                        printf("No Reserive APP!\r\n");
                     }
                 }
                 else
@@ -107,7 +101,7 @@ int main(void)
                         }
                         else
                         {
-                            printf("Illegal FLASH APP2! id:%x %x\r\n", part1ok, oldcount / BLOCK);
+                            printf("Illegal Receive APP2! id:%x %x\r\n", part1ok, oldcount / BLOCK);
                             part1ok = 0;
                         }
                     }
@@ -118,12 +112,11 @@ int main(void)
         if (((*(vu32 *)(FLASH_APP1_ADDR + 4)) & 0xFF000000) == 0x08000000) //判断是否为0X08XXXXXX.
         {
             printf("Run FLASH APP!!\r\n");
-            //MY_NVIC_SetVectorTable(NVIC_VectTab_FLASH,0x0);
             iap_load_app(FLASH_APP1_ADDR);//执行FLASH APP代码
         }
         else
         {
-            printf("Illegal FLASH APP3!\r\n");
+            printf("Illegal FLASH APP!\r\n");
             Data_Save(1);
         }
     }
